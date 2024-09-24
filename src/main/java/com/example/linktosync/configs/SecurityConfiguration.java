@@ -3,10 +3,12 @@ package com.example.linktosync.configs;
 
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,12 +24,15 @@ import com.example.linktosync.exceptions.CustomLogoutHandler;
 
 @Configuration
 @EnableWebSecurity
+//@RequiredArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfiguration {
     private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 //    private final CustomLogoutHandler customLogoutHandler;
     private static final String[] WHITE_LIST_URL = {"/v1/linktosync/auth/****",
-    "/v2/api-docs",
+        "/v1/linktosync/users/**",
+         "/v2/api-docs",
             "/v3/api-docs",
             "/v3/api-docs/**",
             "/swagger-resources",

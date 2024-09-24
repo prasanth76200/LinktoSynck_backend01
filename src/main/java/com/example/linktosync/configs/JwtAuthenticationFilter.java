@@ -1,6 +1,8 @@
 package com.example.linktosync.configs;
 import java.io.IOException;
+import java.util.Objects;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -11,9 +13,9 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.example.linktosync.Tokens.TokenRepository;
-import com.example.linktosync.model.User;
-import com.example.linktosync.services.JwtService;
+import com.example.linktosync.Tokens.repository.TokenRepository;
+import com.example.linktosync.Users.models.User;
+import com.example.linktosync.Tokens.services.JwtService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,12 +25,14 @@ import lombok.AllArgsConstructor;
 
 
 @Component
-
 @AllArgsConstructor
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    @Lazy
     private final JwtService jwtService;
+    @Lazy
     private final UserDetailsService userDetailsService;
+    @Lazy
     private final TokenRepository tokenRepository;
 
     // public JwtAuthenticationFilter(
@@ -64,15 +68,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
         if ((userEmail != null || userName != null) && authentication == null) {
             UserDetails userDetails;
-            if (userEmail != null) {
-                userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            } else {
-                userDetails = this.userDetailsService.loadUserByUsername(userName);
-            }
+            userDetails = this.userDetailsService.loadUserByUsername(Objects.requireNonNullElse(userEmail, userName));
     
             // Check if token is valid, not expired, and belongs to the current user
             var isTokenValid = tokenRepository.findByAccessToken(jwt)
-                    .map(t -> !t.isExpired() && !t.isRevoked())
+                    .map(t -> !t.isAccessTokenExpired() && t.isRefreshTokenExpired() && !t.isRevoked())
                     .orElse(false);
     
             // Call validateToken to ensure token belongs to the current user

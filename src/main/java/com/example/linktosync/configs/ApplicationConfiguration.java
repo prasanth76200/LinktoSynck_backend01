@@ -10,7 +10,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-import com.example.linktosync.repository.UserRepository;
+import com.example.linktosync.Users.repository.UserRepository;
 @Configuration
 public class ApplicationConfiguration {
     private final UserRepository userRepository;

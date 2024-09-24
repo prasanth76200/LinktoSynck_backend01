@@ -1,6 +1,8 @@
 spring:
   application:
     name: linktosync
+  main:
+    allow-circular-references: true
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -38,18 +40,16 @@ spring:
     ignored:
       - /v1/linktosync/api/users/register
   springdoc:
-   swagger-ui:
-    enabled: ${SWAGGER_UI_ENABLED:false}
-
+    swagger-ui:
+      enabled: ${SWAGGER_UI_ENABLED:false}
   mail:
     host: smtp.gmail.com
     port: 587
     username: linktosyncofficial@gmail.com
-    password: xlaj hdhn vbjh kpmm 
+    password: xlaj hdhn vbjh kpmm
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-   
