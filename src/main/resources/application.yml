@@ -1,6 +1,10 @@
 spring:
   application:
     name: linktosync
+  jwt:
+    secret-key: ${JWT_SECRET_KEY:4bb6d1dfbafb64a681139d1586b6f1160d18159afd57c8c79136d7490630407c}
+    access-token-expiration: ${JWT_EXPIRATION_TIME}
+    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION_TIME}
   main:
     allow-circular-references: true
   datasource:
@@ -46,7 +50,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: linktosyncofficial@gmail.com
-    password: xlaj hdhn vbjh kpmm
+    password: xlajhdhnbvjhkpm
     properties:
       mail:
         smtp:

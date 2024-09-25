@@ -20,22 +20,10 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-     @Lazy
-     public final AuthenticationService authenticationService;
-     @Lazy
-     public final UserRepository userRepository;
-     @Lazy
-     public final JwtService jwtService;
+     private final AuthenticationService authenticationService;
+     private final UserRepository userRepository;
+     private final JwtService jwtService;
 
-
-
-
-     //    public UserDto getUserById(UUID userId) {
-//
-//        return userRepository.findById(userId)
-//                .map(user -> new UserDto(user.getUserId(), user.getUsername(), user.getUserEmail())) // Convert entity to DTO
-//                .orElseThrow();
-//    }
      public UserDetails loadUserByUsername(String userName){
 
           User user = userRepository.findByUserName(userName)
