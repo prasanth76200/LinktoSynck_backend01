@@ -6,9 +6,9 @@ package com.example.linktosync.Tokens.services.imp;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.springframework.security.core.userdetails.UserDetails;
@@ -85,7 +85,7 @@ public class JwtServiceImp implements JwtService {
 
     @Override
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+        return generateToken(new ConcurrentHashMap<>(), userDetails);
     }
     @Override
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
@@ -104,7 +104,7 @@ public class JwtServiceImp implements JwtService {
     public String generateRefreshToken(
             UserDetails userDetails
     ) {
-        return buildToken(new HashMap<>(), userDetails, refreshTokenExpiration);
+        return buildToken(new ConcurrentHashMap<>(), userDetails, refreshTokenExpiration);
     }
 
     // @Override
@@ -157,7 +157,7 @@ public boolean isValidRefreshToken(String oldRefreshToken, User user) {
 //        // Check if token username matches and if the token is not expired
 //        return (tokenUsername.equals(userDetails.getUsername()) && !isTokenExpired(accessToken));
 //    }
-@Override
+    @Override
     public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }

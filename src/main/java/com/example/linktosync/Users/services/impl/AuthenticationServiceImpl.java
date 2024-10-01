@@ -53,7 +53,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final TokenRepository tokenRepository;
     private final EmailService emailService;
     private final UnVerfiedUserRepository unVerfiedUserRepository;
+    
     // private final LogoutService logoutService;
+
+
+
  @Override
     public void signup(RegisterUserDto input) {
         UnVerfiedUser existingUser = unVerfiedUserRepository.findByUserEmail(input.getUserEmail()).orElse(null);
@@ -106,6 +110,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 var accessToken = jwtService.generateToken(verifiedUser);
                 var refreshToken = jwtService.generateRefreshToken(verifiedUser);
 
+             
+
+
                 saveUserToken(savedUser, accessToken, refreshToken);
 
                 return AuthenticationResponse.builder()
@@ -141,7 +148,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         var accessToken = jwtService.generateToken(user);
-        var refreshToken = jwtService.generateRefreshToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+       
+
 
         revokeAllUserTokens(user);
         deleteAllUserTokens(user);
@@ -192,6 +202,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
         tokenRepository.save(token);
     }
+
+    
     @Override
     public void resendVerificationCode(String email) {
         Optional<UnVerfiedUser> optionalUser = unVerfiedUserRepository.findByUserEmail(email);
@@ -259,9 +271,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         // Check if the user exists in the database
         User user = userRepository.findByUserName(username)
                 .orElseThrow();
-    
+
+                // System.out.println(jwtService.isRefreshTokenExpire(oldRefreshToken)+ "yes");
+
+                // if(jwtService.isRefreshTokenExpire(oldRefreshToken)){
+                //     refreshTokenService.revokeRefreshToken(user.getUserId());
+
+                // }
+
+                if (jwtService.isValidRefreshToken(oldRefreshToken, user) && !jwtService.isRefreshTokenExpire(oldRefreshToken)) {
         // Check if the refresh token is valid and not expired
-        if (jwtService.isValidRefreshToken(oldRefreshToken, user) && !jwtService.isRefreshTokenExpire(oldRefreshToken)) {
+
+            System.out.println("ckeck from local");
             // Generate new access token (and optionally refresh token)
             String accessToken = jwtService.generateToken(user);
     
@@ -286,6 +307,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     
         return new ResponseEntity<>(HttpStatus.FORBIDDEN);  // Invalid or expired refresh token
     }
+
+ 
+
 }
 //Optional<Tokens> oldToken = tokenRepository.findByRefreshToken(oldRefreshToken);
 
