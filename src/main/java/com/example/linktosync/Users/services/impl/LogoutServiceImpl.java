@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.linktosync.Tokens.models.Tokens;
 import com.example.linktosync.Tokens.repository.TokenRepository;
+import com.example.linktosync.utils.CookieUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class LogoutServiceImpl implements LogoutHandler {
 
     private final TokenRepository tokenRepository;
+    private final CookieUtils cookieUtils;
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
@@ -29,12 +31,7 @@ public class LogoutServiceImpl implements LogoutHandler {
         // Check if the Authorization header is present and starts with "Bearer "
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // Set status to 401 for unauthorized
-            try {
-                response.getWriter().write("Authorization token is missing or invalid.");
-                response.getWriter().flush();
-            } catch (IOException e) {
-                e.printStackTrace(); // Handle the exception properly
-            }
+            writeResponse(response, "Authorization token is missing or invalid.");
             return;
         }
 
@@ -49,30 +46,33 @@ public class LogoutServiceImpl implements LogoutHandler {
             tokenEntity.setRevoked(true);
             tokenEntity.setRefreshTokenExpired(true);
             tokenEntity.setAccessTokenExpired(true);
-            
+
             // Save the updated token state
             tokenRepository.save(tokenEntity);
 
             // Clear the security context
             SecurityContextHolder.clearContext();
 
+            // Delete cookies after successful logout
+            cookieUtils.deleteCookies(response); // Use the utility to delete cookies
+
             // Set the response status to OK (200)
             response.setStatus(HttpServletResponse.SC_OK);
-            try {
-                response.getWriter().write("Logout successful. You have been logged out.");
-                response.getWriter().flush();
-            } catch (IOException e) {
-                e.printStackTrace(); // Handle the exception properly
-            }
+            writeResponse(response, "Logout successful. You have been logged out.");
         } else {
             // If the token is not found, respond with a 401 status
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // Set status to 401 for unauthorized
-            try {
-                response.getWriter().write("Invalid token. Logout failed.");
-                response.getWriter().flush();
-            } catch (IOException e) {
-                e.printStackTrace(); // Handle the exception properly
-            }
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            writeResponse(response, "Invalid token. Logout failed.");
+        }
+    }
+
+    // Helper method to write response
+    private void writeResponse(HttpServletResponse response, String message) {
+        try {
+            response.getWriter().write(message);
+            response.getWriter().flush();
+        } catch (IOException e) {
+            e.printStackTrace(); // Handle the exception properly
         }
     }
 }

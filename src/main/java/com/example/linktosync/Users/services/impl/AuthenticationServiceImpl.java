@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,6 @@ import com.example.linktosync.Users.models.User;
 import com.example.linktosync.Users.repository.UnVerfiedUserRepository;
 import com.example.linktosync.Users.repository.UserRepository;
 import com.example.linktosync.Users.response.AuthenticationResponse;
-import com.example.linktosync.Users.response.LoginResponse;
 import com.example.linktosync.Users.services.AuthenticationService;
 import com.example.linktosync.exceptions.AccountNotVerifiedException;
 import com.example.linktosync.exceptions.EmailSendingException;
@@ -37,8 +37,10 @@ import com.example.linktosync.exceptions.UserAlreadyExistsException;
 import com.example.linktosync.exceptions.UserAlreadyVerifiedException;
 import com.example.linktosync.exceptions.UserNotFoundException;
 import com.example.linktosync.exceptions.VerificationCodeExpiredException;
+import com.example.linktosync.utils.CookieUtils;
 
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -53,32 +55,48 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final TokenRepository tokenRepository;
     private final EmailService emailService;
     private final UnVerfiedUserRepository unVerfiedUserRepository;
-    
+    private final CookieUtils cookieUtils;
     // private final LogoutService logoutService;
 
 
-
- @Override
-    public void signup(RegisterUserDto input) {
-        UnVerfiedUser existingUser = unVerfiedUserRepository.findByUserEmail(input.getUserEmail()).orElse(null);
-         if (existingUser != null) {
-            throw new UserAlreadyExistsException("User with this email already exists.");
+    @Override
+    public String signup(RegisterUserDto input) {
+        // Check if the user exists in the unverified table (email not verified yet)
+        UnVerfiedUser existingUserInUnverified = unVerfiedUserRepository.findByUserEmail(input.getUserEmail()).orElse(null);
+    
+        // Check if the user exists in the verified table (email already verified)
+        User existingUserInVerified = userRepository.findByUserEmail(input.getUserEmail()).orElse(null);
+    
+        // Handle case where the user exists in the unverified table
+        if (existingUserInUnverified != null) {
+            throw new UserAlreadyExistsException("Please check your email and verify your account.");
         }
+    
+        // Handle case where the user exists in the verified table
+        if (existingUserInVerified != null) {
+            throw new UserAlreadyExistsException("This email is already verified.");
+        }
+    
+        // If the user does not exist in either table, create a new unverified user
         UnVerfiedUser unVerfiedUser = new UnVerfiedUser()
                 .setUserName(input.getUserName())
                 .setUserEmail(input.getUserEmail())
                 .setRole(input.getRole())
                 .setUserPassword(passwordEncoder.encode(input.getUserPassword()))
                 .setVerificationCode(generateVerificationCode())
-                .setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(1))
+                .setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(10)) // 10 minutes for example
                 .setIsVerified(false);
-
-        sendVerificationEmail(unVerfiedUser);
-        unVerfiedUserRepository.save(unVerfiedUser);
+    
+                sendVerificationEmail(unVerfiedUser);
+                unVerfiedUserRepository.save(unVerfiedUser);
+    
+        return "Registration successful! Please check your email to verify your account.";
     }
+
+    
     
     @Override
-    public AuthenticationResponse verifyUser(VerifyUserDto input) {
+    public AuthenticationResponse verifyUser(VerifyUserDto input, HttpServletResponse response) {
 
         
         Optional<UnVerfiedUser> optionalUnverifiedUser = unVerfiedUserRepository.findByUserEmail(input.getUserEmail());
@@ -110,7 +128,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 var accessToken = jwtService.generateToken(verifiedUser);
                 var refreshToken = jwtService.generateRefreshToken(verifiedUser);
 
-             
+           
 
 
                 saveUserToken(savedUser, accessToken, refreshToken);
@@ -134,41 +152,70 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                throw new UserAlreadyVerifiedException("You are already a verified user!");
         }
     }
-    @Override
-    public LoginResponse authenticate(LoginUserDto input) {
+
+
+ @Override
+public String authenticate(LoginUserDto input, HttpServletResponse response) {
+    try {
+        // Authenticate user credentials
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(input.getUserName(), input.getUserPassword())
+            new UsernamePasswordAuthenticationToken(input.getUserName(), input.getUserPassword())
         );
 
+        // Find the user by username
         User user = userRepository.findByUserName(input.getUserName())
-                 .orElseThrow(() -> new UserNotFoundException("User not found."));
+                .orElseThrow(() -> new UserNotFoundException("User not found."));
 
+        // Check if the user account is verified
         if (!user.isEnabled()) {
             throw new AccountNotVerifiedException("Account not verified. Please verify your account.");
         }
 
+        // Generate access and refresh tokens
         var accessToken = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
-       
-
-
+        // Revoke or delete previous tokens and save the new ones
         revokeAllUserTokens(user);
         deleteAllUserTokens(user);
         saveUserToken(user, accessToken, refreshToken);
 
-        return LoginResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .accessTokenExpiresIn(jwtService.getAccessTokenExpirationTime())
-                .refreshTokenExpiresIn(jwtService.getRefreshTokenExpirationTime())
-                .build();
+        // Set accessToken as a cookie
+        Cookie accessTokenCookie = new Cookie("sessionID", accessToken);
+        accessTokenCookie.setMaxAge(7 * 24 * 60 * 60); // Expires in 7 days
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true); // Use true if HTTPS
+        accessTokenCookie.setPath("/"); // Accessible throughout the app
+        response.addCookie(accessTokenCookie);
+
+        // Set refreshToken as a cookie
+        Cookie refreshTokenCookie = new Cookie("sessionKey", refreshToken);
+        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // Expires in 30 days
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true); // Use true if HTTPS
+        refreshTokenCookie.setPath("/"); // Accessible throughout the app
+        response.addCookie(refreshTokenCookie);
+
+        return "Login successful!";
+        
+    } catch (Exception ex) {
+        // If authentication fails, delete cookies
+        cookieUtils.deleteCookie(response,"sessionID");
+        cookieUtils.deleteCookie(response,"sessionKey");
+        
+        
+        throw new BadCredentialsException("Invalid username or password.");
     }
+}
+
+
+
 
 
 
     @Override
     public void revokeAllUserTokens(User user) {
+    
         var validUserTokens = tokenRepository.findAllValidTokenByUser_UserId(user.getUserId());
         if (!validUserTokens.isEmpty()) {
             validUserTokens.forEach(token -> {
@@ -178,8 +225,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             tokenRepository.saveAll(validUserTokens);
         }
     }
+
+    
     @Override
-    // New method to delete all user tokens
     public void deleteAllUserTokens(User user) {
         var tokens = tokenRepository.findAllByUser_UserId(user.getUserId());
         tokens.forEach(token -> {
@@ -301,7 +349,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .accessTokenExpiresIn(jwtService.getAccessTokenExpirationTime())
                     .refreshTokenExpiresIn(refreshTokenExpiration.getTime())
                     .build();
-    
+
+
+ 
             return ResponseEntity.ok(responseBody);
         }
     

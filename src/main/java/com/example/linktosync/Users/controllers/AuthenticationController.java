@@ -14,15 +14,18 @@ import com.example.linktosync.Users.dto.LoginUserDto;
 import com.example.linktosync.Users.dto.RegisterUserDto;
 import com.example.linktosync.Users.dto.ResetPasswordDto;
 import com.example.linktosync.Users.dto.VerifyUserDto;
-import com.example.linktosync.Users.response.AuthenticationResponse;
-import com.example.linktosync.Users.response.LoginResponse;
 import com.example.linktosync.Users.services.AuthenticationService;
 import com.example.linktosync.Users.services.ForgotPasswordService;
+import com.example.linktosync.exceptions.UserAlreadyExistsException;
 
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+
+// import javax.servlet.http.HttpServletRequest;
+// import javax.servlet.http.HttpServletResponse;
+
 
 @RequestMapping("v1/linktosync/auth")
 @RestController
@@ -39,33 +42,45 @@ public class AuthenticationController {
         this.forgotPasswordService = forgotPasswordService;
     }
 
+ 
+
+    
     @PostMapping("/signup")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterUserDto registerUserDto) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterUserDto registerUserDto ) {
         try {
             authenticationService.signup(registerUserDto);
-            return ResponseEntity.ok("Register Completed. Please Verify your Email.");
+         
+            // return "redirect:/user/welcome"; 
+            return ResponseEntity.ok("Registration successful! Please check your email to verify your account.");
+        } catch (UserAlreadyExistsException ex) {
+            // Handle the custom exception for existing users
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Error: " + ex.getMessage());
         } catch (DataIntegrityViolationException ex) {
-            // Handle SQL constraint violation
-            @SuppressWarnings("null")
-            String errorMessage = ex.getRootCause().getMessage(); // Extract the SQL error message
-            return ResponseEntity.status(HttpStatus.CONFLICT) // HTTP 409 Conflict
-                    .body("Error: " + errorMessage);
+            // Handle SQL constraint violations
+            String errorMessage = ex.getRootCause() != null ? ex.getRootCause().getMessage() : "Data Integrity Violation";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Error: " + errorMessage);
         } catch (Exception e) {
+            // Handle any unexpected exceptions
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred.");
         }
-
     }
+    
+
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> authenticate(@Valid @RequestBody LoginUserDto loginUserDto) {
-        return ResponseEntity.ok(authenticationService.authenticate(loginUserDto));
+    public ResponseEntity<String> authenticate(@Valid @RequestBody LoginUserDto loginUserDto, HttpServletResponse response) {
+        return ResponseEntity.ok(authenticationService.authenticate(loginUserDto, response));
     }
 
+
+
+  
+
     @PostMapping("/verify")
-    public ResponseEntity<?> verifyUser(@Valid @RequestBody VerifyUserDto verifyUserDto) {
+    public ResponseEntity<?> verifyUser(@Valid @RequestBody VerifyUserDto verifyUserDto, HttpServletResponse response) {
         try {
-            AuthenticationResponse response = authenticationService.verifyUser(verifyUserDto);
-            return ResponseEntity.ok(response);
+            // AuthenticationResponse response = authenticationService.verifyUser(verifyUserDto);
+            return ResponseEntity.ok(authenticationService.verifyUser(verifyUserDto,response));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

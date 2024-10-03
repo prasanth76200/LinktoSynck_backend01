@@ -10,18 +10,17 @@ import com.example.linktosync.Users.dto.VerifyUserDto;
 import com.example.linktosync.Users.models.UnVerfiedUser;
 import com.example.linktosync.Users.models.User;
 import com.example.linktosync.Users.response.AuthenticationResponse;
-import com.example.linktosync.Users.response.LoginResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 
 public interface AuthenticationService {
-        void signup(RegisterUserDto input);
+        public String signup(RegisterUserDto input);
 
-        AuthenticationResponse verifyUser(VerifyUserDto input);
+        AuthenticationResponse verifyUser(VerifyUserDto input, HttpServletResponse response);
 
-        LoginResponse authenticate(LoginUserDto input);
+        public String authenticate(LoginUserDto input, HttpServletResponse response);
 
         void revokeAllUserTokens(User user);
 

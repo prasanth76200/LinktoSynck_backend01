@@ -26,24 +26,39 @@ spring:
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     properties:
-      format_sql: true
-      show_sql: true
-      use_sql_comments: true
-      jdbc:
-        lob:
-          non_contextual_creation: true
+      hibernate:
+        format_sql: true
+        show_sql: true
+        use_sql_comments: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
     open-in-view: false
   logging:
     level:
       '[org.hibernate.SQL]': debug
       com.LinktoSync: DEBUG
-  app:
-    security:
-      username: ${APP_USERNAME}
-      password: ${APP_PASSWORD}
+
   security:
-    ignored:
-      - /v1/linktosync/api/users/register
+    oauth2:
+      client:
+        registration:
+          github:
+            clientId: Ov23liW1KMprOcMkrY5i
+            clientSecret: 4414312ae9dcef5045420a2462f17a4787b6ba18
+          google:
+            clientId: 471245402224-158n2ikgd4k6aen9hhg5jci4dophgnsn.apps.googleusercontent.com
+            clientSecret: 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
+            # Uncomment and set the scope if needed
+            # scope: profile, email
+            # redirectUri: "http://localhost:8080/login/oauth2/code/google"
+
+  # Uncomment and configure cache if needed
+  # cache:
+  #   cache-names: refreshTokenCache
+  #   caffeine:
+  #     spec: expireAfterWrite=604800000
+
   springdoc:
     swagger-ui:
       enabled: ${SWAGGER_UI_ENABLED:true}
@@ -58,9 +73,3 @@ spring:
           auth: true
           starttls:
             enable: true
-  # cache:
-  #   cache-names: refreshTokenCache
-  #   caffeine:
-  #     spec: expireAfterWrite= 604800000
-       # main:
-    # allow-bean-definition-overriding: true
